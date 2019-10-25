@@ -36,6 +36,15 @@ RUN set -eux; \
 		ca-certificates \
 		curl \
 		xz-utils \
+#add packages from ivandreyv/php72apache BEGIN
+                tzdata \
+                unzip \
+                mycli \
+                curl  \
+                git   \
+                mariadb-client \
+                zlib1g-dev \
+#add packages from ivandreyv/php72apache END
 	; \
 	rm -rf /var/lib/apt/lists/*
 
@@ -89,7 +98,11 @@ RUN set -eux; \
 	chown -R --no-dereference "$APACHE_RUN_USER:$APACHE_RUN_GROUP" "$APACHE_LOG_DIR"
 
 # Apache + PHP requires preforking Apache for best results
-RUN a2dismod mpm_event && a2enmod mpm_prefork
+RUN a2dismod mpm_event && a2enmod mpm_prefork \
+        \
+#add packages from ivandreyv/php72apache BEGIN
+     && a2enmod rewrite && a2enmod remoteip
+#add packages from ivandreyv/php72apache END
 
 # PHP files should be handled by PHP, and should be preferred over any other file type
 RUN { \
@@ -266,6 +279,11 @@ COPY docker-php-ext-* docker-php-entrypoint /usr/local/bin/
 
 # sodium was built as a shared module (so that it can be replaced later if so desired), so let's enable it too (https://github.com/docker-library/php/issues/598)
 RUN docker-php-ext-enable sodium
+
+#add packages from ivandreyv/php72apache BEGIN
+RUN docker-php-ext-install pdo pdo_mysql zip
+RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+#add packages from ivandreyv/php72apache END
 
 # temporary "freetype-config" workaround for https://github.com/docker-library/php/issues/865 (https://bugs.php.net/bug.php?id=76324)
 RUN { echo '#!/bin/sh'; echo 'exec pkg-config "$@" freetype2'; } > /usr/local/bin/freetype-config && chmod +x /usr/local/bin/freetype-config
